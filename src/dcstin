@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+import json, os, requests, select, sys, time, urllib2, uuid
+
+def publish(channel, line):
+
+	headers = {'Accept': 'application/json', 'Content-Type': 'application/json', 'User-Agent': "Mozilla/5.0"}
+
+	req = urllib2.Request(
+			channel,
+			json.dumps({
+					"handler": "tail",
+					"args": [line],
+					'info': {
+							'pid': os.getpid(),
+							'machineId': getMacAddress(),
+							'generationTime': time.time(),
+					},
+					"trace": [ {'location': "cheese", 'function': 'myfunc'} ]
+			})
+	)
+	map(lambda (x,y): req.add_header(x,y), headers.items())
+	urllib2.urlopen(req)
+
+def getMacAddress():
+	return ':'.join(['{:02x}'.format((uuid.getnode() >> i) & 0xff) for i in range(0,8*6,8)][::-1])
+
+while sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+  
+  line_in = sys.stdin.readline()
+
+  if line_in:
+
+	line = line_in.rstrip()
+
+	# Check length of array
+	if len(sys.argv) < 2:
+		print "You need to specify the server and channel as the first argument." 
+		print "e.g: dcstin https://www.debugchannel.com/hello"
+		exit(1)
+
+	channel = sys.argv.pop(1)
+
+	publish(channel,line)
+
+	exit(0)
+
+else:
+
+	print "Nothing sent.  You need to pipe something to it." 
+	print 'e.g: echo "hello" | dcstin https://www.debugchannel.com/hello'
+	exit(1)
